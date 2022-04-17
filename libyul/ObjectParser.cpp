@@ -100,7 +100,10 @@ shared_ptr<Object> ObjectParser::parseObject(Object* _containingObject)
 			fatalParserError(8143_error, "Expected keyword \"data\" or \"object\" or \"}\".");
 	}
 	if (_containingObject)
+	{
+		ret->subId = _containingObject->subObjects.size();
 		addNamedSubObject(*_containingObject, ret->name, ret);
+	}
 
 	expectToken(Token::RBrace);
 
