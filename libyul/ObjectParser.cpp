@@ -101,7 +101,6 @@ shared_ptr<Object> ObjectParser::parseObject(Object* _containingObject)
 	}
 	if (_containingObject)
 	{
-		ret->subId = _containingObject->subObjects.size();
 		addNamedSubObject(*_containingObject, ret->name, ret);
 	}
 

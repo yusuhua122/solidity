@@ -87,18 +87,38 @@ public:
 		}.printErrorInformation(_errors);
 	}
 
-	shared_ptr<Object> getSubObject(shared_ptr<Object> const& _rootObject, string const& _path)
+	shared_ptr<Object> getSubObject(shared_ptr<Object> const& _object, string const& _path)
 	{
-		if (_path.empty())
-			return _rootObject;
+		if (_path.empty() || _path == _object->name.str())
+			return _object;
 
-		auto pathToSubObject = _rootObject->pathToSubObject(YulString(_path));
-		auto subObject = _rootObject;
+		yulAssert(
+			boost::algorithm::starts_with(_path, _object->name.str() + "."),
+			"Assembly object not found."
+		);
 
-		for (auto const& i: pathToSubObject)
-			subObject = dynamic_pointer_cast<Object>(subObject->subObjects[i]);
+		const auto subObjectPath = _path.substr(_object->name.str().length() + 1);
+		const auto subObjectName = subObjectPath.substr(0, subObjectPath.find_first_of('.'));
 
-		return subObject;
+		auto subObjectIt = find_if(
+			_object->subObjects.begin(),
+			_object->subObjects.end(),
+			[subObjectName](auto const& subObject) { return subObject->name.str() == subObjectName; }
+		);
+
+		yulAssert(
+			subObjectIt != _object->subObjects.end(),
+			"Assembly object not found."
+		);
+
+		auto subObject = dynamic_pointer_cast<Object>(*subObjectIt);
+
+		yulAssert(
+			subObject != nullptr,
+			"Assembly object may not contain code."
+		);
+
+		return getSubObject(subObject, subObjectPath);
 	}
 
 	void parse(string const& _input, string const& _objectPath)
