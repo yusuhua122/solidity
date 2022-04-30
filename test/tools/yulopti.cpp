@@ -133,9 +133,8 @@ public:
 
 			auto scanner = make_shared<Scanner>(_charStream);
 
-			if (!m_inputWasCodeBlock && scanner->currentToken() == Token::LBrace) {
+			if (!m_inputWasCodeBlock && scanner->currentToken() == Token::LBrace)
 				m_inputWasCodeBlock = true;
-			}
 
 			auto content = parser.parse(scanner, false);
 
