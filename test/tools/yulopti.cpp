@@ -132,6 +132,11 @@ public:
 			ObjectParser parser(errorReporter, m_dialect);
 
 			auto scanner = make_shared<Scanner>(_charStream);
+
+			if (!m_inputWasCodeBlock && scanner->currentToken() == Token::LBrace) {
+				m_inputWasCodeBlock = true;
+			}
+
 			auto content = parser.parse(scanner, false);
 
 			if (content != nullptr)
@@ -276,7 +281,15 @@ public:
 	void parseAndPrint(string _source, string _objectPath)
 	{
 		parse(_source, _objectPath);
-		cout << m_object->toString(&m_dialect) << endl;
+		printObject();
+	}
+
+	void printObject()
+	{
+		if (!m_inputWasCodeBlock)
+			cout << m_object->toString(&m_dialect) << endl;
+		else
+			cout << AsmPrinter{m_dialect}(*m_object->code)  << endl;
 	}
 
 	void resetNameDispenser()
@@ -358,12 +371,14 @@ public:
 				cerr << boost::current_exception_diagnostic_information() << endl;
 			}
 			cout << "----------------------" << endl;
-			cout << m_object->toString(&m_dialect) << endl;
+			printObject();
 		}
 	}
 
 private:
 	shared_ptr<yul::Object> m_object;
+	bool m_inputWasCodeBlock;
+
 	Dialect const& m_dialect{EVMDialect::strictAssemblyForEVMObjects(EVMVersion{})};
 	set<YulString> const m_reservedIdentifiers = {};
 	shared_ptr<NameDispenser> m_nameDispenser = make_shared<NameDispenser>(
