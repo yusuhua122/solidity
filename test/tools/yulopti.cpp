@@ -399,7 +399,7 @@ int main(int argc, char** argv)
 	interactively read from stdin.
 	In non-interactive mode a list of steps has to be provided.
 	If <file> is -, yul code is read from stdin and run non-interactively.
-	If <object> is provided then only the object matching the given path will be read.
+	An <object> flag may be provided, specifying a dotted path to an object in the input.
 
 	Allowed options)",
 			po::options_description::m_default_line_length,
