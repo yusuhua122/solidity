@@ -208,29 +208,21 @@ public:
 		}
 	}
 
-	void objectApply(function<void(Object&)> _fn)
+	void objectApply(shared_ptr<Object> _object, function<void(Object&)> _fn)
 	{
-		vector<shared_ptr<Object>> stack;
-		stack.push_back(m_object);
+		for (auto const& subObjectNode: _object->subObjects) {
+			auto subObject = dynamic_pointer_cast<Object>(subObjectNode);
 
-		while (!stack.empty()) {
-			auto object = stack.back();
-			stack.pop_back();
-
-			for (auto const& subObjectNode: object->subObjects) {
-				auto subObject = dynamic_pointer_cast<Object>(subObjectNode);
-
-				if (subObject != nullptr)
-					stack.push_back(subObject);
-			}
-
-			_fn(*object);
+			if (subObject != nullptr)
+				objectApply(subObject, _fn);
 		}
+
+		_fn(*_object);
 	}
 
 	void analyze(ErrorReporter& errorReporter)
 	{
-		objectApply([&](Object& object) -> void {
+		objectApply(m_object, [&](Object& object) {
 			object.analysisInfo = make_shared<yul::AsmAnalysisInfo>();
 
 			AsmAnalyzer analyzer(
@@ -248,7 +240,7 @@ public:
 
 	void disambiguate()
 	{
-		objectApply([&](Object& object) -> void {
+		objectApply(m_object, [&](Object& object) {
 			object.code = make_shared<yul::Block>(
 				std::get<yul::Block>(Disambiguator(m_dialect, *object.analysisInfo)(*object.code))
 			);
@@ -259,21 +251,21 @@ public:
 
 	void runSequence(string_view _steps)
 	{
-		objectApply([&](Object& object) -> void {
+		objectApply(m_object, [&](Object& object) {
 			OptimiserSuite{*m_context}.runSequence(_steps, *object.code);
 		});
 	}
 
 	void runVarNameCleaner()
 	{
-		objectApply([&](Object& object) -> void {
+		objectApply(m_object, [&](Object& object) {
 			VarNameCleaner::run(*m_context, *object.code);
 		});
 	}
 
 	void runStackCompressor()
 	{
-		objectApply([&](Object& object) -> void {
+		objectApply(m_object, [&](Object& object) {
 			StackCompressor::run(m_dialect, object, true, 16);
 		});
 	}
