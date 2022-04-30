@@ -87,17 +87,17 @@ public:
 		}.printErrorInformation(_errors);
 	}
 
-	shared_ptr<Object> getSubObject(shared_ptr<Object> const& _object, string const& _path)
+	shared_ptr<Object> getSubObject(shared_ptr<Object> const& _object, string const& _qualifiedPath)
 	{
-		if (_path.empty() || _path == _object->name.str())
+		if (_qualifiedPath.empty() || _qualifiedPath == _object->name.str())
 			return _object;
 
 		yulAssert(
-			boost::algorithm::starts_with(_path, _object->name.str() + "."),
+			boost::algorithm::starts_with(_qualifiedPath, _object->name.str() + "."),
 			"Assembly object not found."
 		);
 
-		const auto subObjectPath = _path.substr(_object->name.str().length() + 1);
+		const auto subObjectPath = _qualifiedPath.substr(_object->name.str().length() + 1);
 		const auto subObjectName = subObjectPath.substr(0, subObjectPath.find_first_of('.'));
 
 		auto subObjectIt = find_if(
