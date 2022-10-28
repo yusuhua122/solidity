@@ -51,6 +51,7 @@
 #include <boost/program_options.hpp>
 
 #include <range/v3/action/sort.hpp>
+#include <range/v3/algorithm/find_if.hpp>
 #include <range/v3/range/conversion.hpp>
 #include <range/v3/view/concat.hpp>
 #include <range/v3/view/drop.hpp>
@@ -100,10 +101,9 @@ public:
 		const auto subObjectPath = _qualifiedPath.substr(_object->name.str().length() + 1);
 		const auto subObjectName = subObjectPath.substr(0, subObjectPath.find_first_of('.'));
 
-		auto subObjectIt = find_if(
-			_object->subObjects.begin(),
-			_object->subObjects.end(),
-			[subObjectName](auto const& subObject) { return subObject->name.str() == subObjectName; }
+		auto subObjectIt = ranges::find_if(
+			_object->subObjects,
+			[subObjectName](auto const& _subObject) { return _subObject->name.str() == subObjectName; }
 		);
 
 		yulAssert(
@@ -125,13 +125,13 @@ public:
 	{
 		ErrorList errors;
 		ErrorReporter errorReporter(errors);
-		CharStream _charStream(_input, "");
+		CharStream charStream(_input, "");
 
 		try
 		{
 			ObjectParser parser(errorReporter, m_dialect);
 
-			auto scanner = make_shared<Scanner>(_charStream);
+			auto scanner = make_shared<Scanner>(charStream);
 
 			if (!m_inputWasCodeBlock && scanner->currentToken() == Token::LBrace)
 				m_inputWasCodeBlock = true;
@@ -144,16 +144,16 @@ public:
 			if (!m_object || !errorReporter.errors().empty())
 			{
 				cerr << "Error parsing source." << endl;
-				printErrors(_charStream, errors);
-				throw std::runtime_error("Could not parse source.");
+				printErrors(charStream, errors);
+				throw runtime_error("Could not parse source.");
 			}
 
-			analyze(errorReporter);
+			runCodeAnalyzer(errorReporter);
 		}
 		catch(...)
 		{
 			cerr << "Fatal error during parsing: " << endl;
-			printErrors(_charStream, errors);
+			printErrors(charStream, errors);
 			throw;
 		}
 	}
@@ -166,7 +166,7 @@ public:
 		yulAssert(_columns > 0);
 		auto const& optimiserSteps = OptimiserSuite::stepAbbreviationToNameMap();
 		auto hasShorterString = [](auto const& a, auto const& b) { return a.second.size() < b.second.size(); };
-		size_t longestDescriptionLength = std::max(
+		size_t longestDescriptionLength = max(
 			max_element(optimiserSteps.begin(), optimiserSteps.end(), hasShorterString)->second.size(),
 			max_element(_extraOptions.begin(), _extraOptions.end(), hasShorterString)->second.size()
 		);
@@ -207,66 +207,86 @@ public:
 		}
 	}
 
-	void objectApply(shared_ptr<Object> _object, function<void(Object&)> _fn)
+	void objectApplyFunction(shared_ptr<Object> _object, function<void(Object&)> _fn)
 	{
 		for (auto const& subObjectNode: _object->subObjects) {
 			auto subObject = dynamic_pointer_cast<Object>(subObjectNode);
 
 			if (subObject != nullptr)
-				objectApply(subObject, _fn);
+				objectApplyFunction(subObject, _fn);
 		}
 
 		_fn(*_object);
 	}
 
-	void analyze(ErrorReporter& errorReporter)
+	void runCodeAnalyzer(ErrorReporter& _errorReporter)
 	{
-		objectApply(m_object, [&](Object& object) {
-			object.analysisInfo = make_shared<yul::AsmAnalysisInfo>();
+		objectApplyFunction(
+			m_object,
+			[&](Object& _object)
+			{
+				_object.analysisInfo = make_shared<yul::AsmAnalysisInfo>();
 
-			AsmAnalyzer analyzer(
-				*object.analysisInfo,
-				errorReporter,
-				m_dialect,
-				{},
-				object.qualifiedDataNames()
-			);
+				AsmAnalyzer analyzer(
+					*_object.analysisInfo,
+					_errorReporter,
+					m_dialect,
+					{},
+					_object.qualifiedDataNames()
+				);
 
-			bool success = analyzer.analyze(*object.code);
-			yulAssert(success && !errorReporter.hasErrors(), "Invalid assembly/yul code.");
-		});
+				bool success = analyzer.analyze(*_object.code);
+				yulAssert(success && !_errorReporter.hasErrors(), "Invalid assembly/yul code.");
+			}
+		);
 	}
 
-	void disambiguate()
+	void runCodeDisambiguator()
 	{
-		objectApply(m_object, [&](Object& object) {
-			object.code = make_shared<yul::Block>(
-				std::get<yul::Block>(Disambiguator(m_dialect, *object.analysisInfo)(*object.code))
-			);
+		objectApplyFunction(
+			m_object,
+			[&](Object& _object)
+			{
+				_object.code = make_shared<yul::Block>(
+					get<yul::Block>(Disambiguator(m_dialect, *_object.analysisInfo)(*_object.code))
+				);
 
-			object.analysisInfo.reset();
-		});
+				_object.analysisInfo.reset();
+			}
+		);
 	}
 
 	void runSequence(string_view _steps)
 	{
-		objectApply(m_object, [&](Object& object) {
-			OptimiserSuite{*m_context}.runSequence(_steps, *object.code);
-		});
+		objectApplyFunction(
+			m_object,
+			[&](Object& _object)
+			{
+				OptimiserSuite{*m_context}.runSequence(_steps, *_object.code);
+			}
+		);
 	}
 
 	void runVarNameCleaner()
 	{
-		objectApply(m_object, [&](Object& object) {
-			VarNameCleaner::run(*m_context, *object.code);
-		});
+		objectApplyFunction(
+			m_object,
+			[&](Object& _object)
+			{
+				VarNameCleaner::run(*m_context, *_object.code);
+			}
+		);
 	}
 
 	void runStackCompressor()
 	{
-		objectApply(m_object, [&](Object& object) {
-			StackCompressor::run(m_dialect, object, true, 16);
-		});
+		objectApplyFunction(
+			m_object,
+			[&](Object& _object)
+			{
+				StackCompressor::run(m_dialect, _object, true, 16);
+			}
+		);
 	}
 
 	void parseAndPrint(string _source, string _objectPath)
@@ -303,7 +323,7 @@ public:
 	void runSteps(string _source, string _objectPath, string _steps)
 	{
 		parse(_source, _objectPath);
-		disambiguate();
+		runCodeDisambiguator();
 		runSequence(_steps);
 	}
 
@@ -317,7 +337,7 @@ public:
 
 		while (true)
 		{
-			disambiguated = disambiguated || (disambiguate(), true);
+			disambiguated = disambiguated || (runCodeDisambiguator(), true);
 
 			map<char, string> const& extraOptions = {
 				// QUIT starts with a non-letter character on purpose to get it to show up on top of the list
@@ -345,16 +365,14 @@ public:
 						disambiguated = false;
 						break;
 					case ';':
-					{
 						runStackCompressor();
 						break;
-					}
 					default:
-						runSequence(std::string_view(&option, 1));
+						runSequence(string_view(&option, 1));
 				}
 
 				resetNameDispenser();
-				analyze(errorReporter);
+				runCodeAnalyzer(errorReporter);
 			}
 			catch (...)
 			{
