@@ -98,12 +98,12 @@ public:
 			"Assembly object not found."
 		);
 
-		const auto subObjectPath = _qualifiedPath.substr(_object->name.str().length() + 1);
-		const auto subObjectName = subObjectPath.substr(0, subObjectPath.find_first_of('.'));
+		string const subObjectPath = _qualifiedPath.substr(_object->name.str().length() + 1);
+		string const subObjectName = subObjectPath.substr(0, subObjectPath.find_first_of('.'));
 
 		auto subObjectIt = ranges::find_if(
 			_object->subObjects,
-			[subObjectName](auto const& _subObject) { return _subObject->name.str() == subObjectName; }
+			[&subObjectName](auto const& _subObject) { return _subObject->name.str() == subObjectName; }
 		);
 
 		yulAssert(
@@ -136,18 +136,16 @@ public:
 			if (!m_inputWasCodeBlock && scanner->currentToken() == Token::LBrace)
 				m_inputWasCodeBlock = true;
 
-			auto content = parser.parse(scanner, false);
+			shared_ptr<Object> object = parser.parse(scanner, false);
 
-			if (content != nullptr)
-				m_object = getSubObject(content, _objectPath);
-
-			if (!m_object || !errorReporter.errors().empty())
+			if (!object || !errorReporter.errors().empty())
 			{
 				cerr << "Error parsing source." << endl;
 				printErrors(charStream, errors);
 				throw runtime_error("Could not parse source.");
 			}
 
+			m_object = getSubObject(object, _objectPath);
 			runCodeAnalyzer(errorReporter);
 		}
 		catch(...)
@@ -207,21 +205,21 @@ public:
 		}
 	}
 
-	void objectApplyFunction(shared_ptr<Object> _object, function<void(Object&)> _fn)
+	void applyFunctionToObject(shared_ptr<Object> _object, function<void(Object&)> _function)
 	{
 		for (auto const& subObjectNode: _object->subObjects) {
 			auto subObject = dynamic_pointer_cast<Object>(subObjectNode);
 
 			if (subObject != nullptr)
-				objectApplyFunction(subObject, _fn);
+				applyFunctionToObject(subObject, _function);
 		}
 
-		_fn(*_object);
+		_function(*_object);
 	}
 
 	void runCodeAnalyzer(ErrorReporter& _errorReporter)
 	{
-		objectApplyFunction(
+		applyFunctionToObject(
 			m_object,
 			[&](Object& _object)
 			{
@@ -243,7 +241,7 @@ public:
 
 	void runCodeDisambiguator()
 	{
-		objectApplyFunction(
+		applyFunctionToObject(
 			m_object,
 			[&](Object& _object)
 			{
@@ -258,7 +256,7 @@ public:
 
 	void runSequence(string_view _steps)
 	{
-		objectApplyFunction(
+		applyFunctionToObject(
 			m_object,
 			[&](Object& _object)
 			{
@@ -269,7 +267,7 @@ public:
 
 	void runVarNameCleaner()
 	{
-		objectApplyFunction(
+		applyFunctionToObject(
 			m_object,
 			[&](Object& _object)
 			{
@@ -280,7 +278,7 @@ public:
 
 	void runStackCompressor()
 	{
-		objectApplyFunction(
+		applyFunctionToObject(
 			m_object,
 			[&](Object& _object)
 			{
@@ -386,7 +384,7 @@ public:
 
 private:
 	shared_ptr<yul::Object> m_object;
-	bool m_inputWasCodeBlock;
+	bool m_inputWasCodeBlock = false;
 
 	Dialect const& m_dialect{EVMDialect::strictAssemblyForEVMObjects(EVMVersion{})};
 	set<YulString> const m_reservedIdentifiers = {};
