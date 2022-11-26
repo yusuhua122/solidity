@@ -88,15 +88,16 @@ public:
 		}.printErrorInformation(_errors);
 	}
 
-	shared_ptr<Object> getSubObject(shared_ptr<Object> const& _object, string const& _qualifiedPath)
+	/// Recursively searches for an object at @param _qualifiedPath within @param _object.
+	/// @returns the object at @param qualifiedPath or a nullptr if it was not found.
+	shared_ptr<Object> getObject(shared_ptr<Object> const& _object, string const& _qualifiedPath)
 	{
 		if (_qualifiedPath.empty() || _qualifiedPath == _object->name.str())
 			return _object;
 
-		yulAssert(
-			boost::algorithm::starts_with(_qualifiedPath, _object->name.str() + "."),
-			"Assembly object not found."
-		);
+		if (!boost::algorithm::starts_with(_qualifiedPath, _object->name.str() + ".")) {
+			return nullptr;
+		}
 
 		string const subObjectPath = _qualifiedPath.substr(_object->name.str().length() + 1);
 		string const subObjectName = subObjectPath.substr(0, subObjectPath.find_first_of('.'));
@@ -106,19 +107,18 @@ public:
 			[&subObjectName](auto const& _subObject) { return _subObject->name.str() == subObjectName; }
 		);
 
-		yulAssert(
-			subObjectIt != _object->subObjects.end(),
-			"Assembly object not found."
-		);
+		if (subObjectIt == _object->subObjects.end()) {
+			return nullptr;
+		}
 
 		auto subObject = dynamic_pointer_cast<Object>(*subObjectIt);
 
 		yulAssert(
 			subObject != nullptr,
-			"Assembly object may not contain code."
+			"Assembly object does not contain code."
 		);
 
-		return getSubObject(subObject, subObjectPath);
+		return getObject(subObject, subObjectPath);
 	}
 
 	void parse(string const& _input, string const& _objectPath)
@@ -133,8 +133,8 @@ public:
 
 			auto scanner = make_shared<Scanner>(charStream);
 
-			if (!m_inputWasCodeBlock && scanner->currentToken() == Token::LBrace)
-				m_inputWasCodeBlock = true;
+			if (!m_inputIsCodeBlock && scanner->currentToken() == Token::LBrace)
+				m_inputIsCodeBlock = true;
 
 			shared_ptr<Object> object = parser.parse(scanner, false);
 
@@ -145,7 +145,12 @@ public:
 				throw runtime_error("Could not parse source.");
 			}
 
-			m_object = getSubObject(object, _objectPath);
+			m_object = getObject(object, _objectPath);
+
+			if (m_object == nullptr) {
+				throw runtime_error("Assembly object not found.");
+			}
+
 			runCodeAnalyzer(errorReporter);
 		}
 		catch(...)
@@ -205,22 +210,22 @@ public:
 		}
 	}
 
-	void applyFunctionToObject(shared_ptr<Object> _object, function<void(Object&)> _function)
+	void applyFunctionToObjectAndSubobjects(Object& _object, function<void(Object&)> _function)
 	{
-		for (auto const& subObjectNode: _object->subObjects) {
+		for (auto const& subObjectNode: _object.subObjects) {
 			auto subObject = dynamic_pointer_cast<Object>(subObjectNode);
 
 			if (subObject != nullptr)
-				applyFunctionToObject(subObject, _function);
+				applyFunctionToObjectAndSubobjects(*subObject, _function);
 		}
 
-		_function(*_object);
+		_function(_object);
 	}
 
 	void runCodeAnalyzer(ErrorReporter& _errorReporter)
 	{
-		applyFunctionToObject(
-			m_object,
+		applyFunctionToObjectAndSubobjects(
+			*m_object,
 			[&](Object& _object)
 			{
 				_object.analysisInfo = make_shared<yul::AsmAnalysisInfo>();
@@ -241,8 +246,8 @@ public:
 
 	void runCodeDisambiguator()
 	{
-		applyFunctionToObject(
-			m_object,
+		applyFunctionToObjectAndSubobjects(
+			*m_object,
 			[&](Object& _object)
 			{
 				_object.code = make_shared<yul::Block>(
@@ -256,8 +261,8 @@ public:
 
 	void runSequence(string_view _steps)
 	{
-		applyFunctionToObject(
-			m_object,
+		applyFunctionToObjectAndSubobjects(
+			*m_object,
 			[&](Object& _object)
 			{
 				OptimiserSuite{*m_context}.runSequence(_steps, *_object.code);
@@ -267,8 +272,8 @@ public:
 
 	void runVarNameCleaner()
 	{
-		applyFunctionToObject(
-			m_object,
+		applyFunctionToObjectAndSubobjects(
+			*m_object,
 			[&](Object& _object)
 			{
 				VarNameCleaner::run(*m_context, *_object.code);
@@ -278,8 +283,8 @@ public:
 
 	void runStackCompressor()
 	{
-		applyFunctionToObject(
-			m_object,
+		applyFunctionToObjectAndSubobjects(
+			*m_object,
 			[&](Object& _object)
 			{
 				StackCompressor::run(m_dialect, _object, true, 16);
@@ -287,18 +292,12 @@ public:
 		);
 	}
 
-	void parseAndPrint(string _source, string _objectPath)
-	{
-		parse(_source, _objectPath);
-		printObject();
-	}
-
 	void printObject()
 	{
-		if (!m_inputWasCodeBlock)
+		if (!m_inputIsCodeBlock)
 			cout << m_object->toString(&m_dialect) << endl;
 		else
-			cout << AsmPrinter{m_dialect}(*m_object->code)  << endl;
+			cout << AsmPrinter{m_dialect}(*m_object->code) << endl;
 	}
 
 	void resetNameDispenser()
@@ -318,7 +317,7 @@ public:
 		);
 	}
 
-	void runSteps(string _source, string _objectPath, string _steps)
+	void parseAndRunSteps(string const& _source, string const& _objectPath, string const& _steps)
 	{
 		parse(_source, _objectPath);
 		runCodeDisambiguator();
@@ -384,7 +383,7 @@ public:
 
 private:
 	shared_ptr<yul::Object> m_object;
-	bool m_inputWasCodeBlock = false;
+	bool m_inputIsCodeBlock = false;
 
 	Dialect const& m_dialect{EVMDialect::strictAssemblyForEVMObjects(EVMVersion{})};
 	set<YulString> const m_reservedIdentifiers = {};
@@ -410,11 +409,10 @@ int main(int argc, char** argv)
 		po::options_description options(
 			R"(yulopti, yul optimizer exploration tool.
 	Usage: yulopti [Options] <file>
-	Reads <file> containing a yul object and applies optimizer steps to it,
+	Reads <file> containing a either a yul object or a yul code block and applies optimizer steps to it,
 	interactively read from stdin.
 	In non-interactive mode a list of steps has to be provided.
 	If <file> is -, yul code is read from stdin and run non-interactively.
-	An <object> flag may be provided, specifying a dotted path to an object in the input.
 
 	Allowed options)",
 			po::options_description::m_default_line_length,
@@ -432,8 +430,10 @@ int main(int argc, char** argv)
 			)
 			(
 				"object",
-				po::value<string>(),
-				"path to a yul object in the input"
+				po::value<string>()->value_name("path"),
+				"Dotted path to a specific Yul object in the source. "
+				"If not specified, the top-level object is used. "
+				"Only valid if the source actually contains objects (rather than a block of Yul code)."
 			)
 			(
 				"non-interactive,n",
@@ -491,14 +491,17 @@ int main(int argc, char** argv)
 		bool disambiguated = false;
 
 		if (!nonInteractive)
-			yulOpti.parseAndPrint(input, objectPath);
+		{
+			yulOpti.parse(input, objectPath);
+			yulOpti.printObject();
+		}
 
 		if (arguments.count("steps"))
 		{
 			string sequence = arguments["steps"].as<string>();
 			if (!nonInteractive)
 				cout << "----------------------" << endl;
-			yulOpti.runSteps(input, objectPath, sequence);
+			yulOpti.parseAndRunSteps(input, objectPath, sequence);
 			disambiguated = true;
 		}
 		if (!nonInteractive)
