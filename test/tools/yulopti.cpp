@@ -51,7 +51,6 @@
 #include <boost/program_options.hpp>
 
 #include <range/v3/action/sort.hpp>
-#include <range/v3/algorithm/find_if.hpp>
 #include <range/v3/range/conversion.hpp>
 #include <range/v3/view/concat.hpp>
 #include <range/v3/view/drop.hpp>
@@ -88,39 +87,6 @@ public:
 		}.printErrorInformation(_errors);
 	}
 
-	/// Recursively searches for an object at @param _qualifiedPath within @param _object.
-	/// @returns the object at @param qualifiedPath or a nullptr if it was not found.
-	shared_ptr<Object> getObject(shared_ptr<Object> const& _object, string const& _qualifiedPath)
-	{
-		if (_qualifiedPath.empty() || _qualifiedPath == _object->name.str())
-			return _object;
-
-		if (!boost::algorithm::starts_with(_qualifiedPath, _object->name.str() + ".")) {
-			return nullptr;
-		}
-
-		string const subObjectPath = _qualifiedPath.substr(_object->name.str().length() + 1);
-		string const subObjectName = subObjectPath.substr(0, subObjectPath.find_first_of('.'));
-
-		auto subObjectIt = ranges::find_if(
-			_object->subObjects,
-			[&subObjectName](auto const& _subObject) { return _subObject->name.str() == subObjectName; }
-		);
-
-		if (subObjectIt == _object->subObjects.end()) {
-			return nullptr;
-		}
-
-		auto subObject = dynamic_pointer_cast<Object>(*subObjectIt);
-
-		yulAssert(
-			subObject != nullptr,
-			"Assembly object does not contain code."
-		);
-
-		return getObject(subObject, subObjectPath);
-	}
-
 	void parse(string const& _input, string const& _objectPath)
 	{
 		ErrorList errors;
@@ -145,7 +111,7 @@ public:
 				throw runtime_error("Could not parse source.");
 			}
 
-			m_object = getObject(object, _objectPath);
+			m_object = Object::objectAt(object, _objectPath);
 
 			if (m_object == nullptr) {
 				throw runtime_error("Assembly object not found.");

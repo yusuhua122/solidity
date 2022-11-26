@@ -33,6 +33,7 @@
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/replace.hpp>
 
+#include <range/v3/algorithm/find_if.hpp>
 #include <range/v3/view/transform.hpp>
 
 using namespace std;
@@ -173,4 +174,29 @@ vector<size_t> Object::pathToSubObject(YulString _qualifiedName) const
 	}
 
 	return path;
+}
+
+shared_ptr<Object> Object::objectAt(shared_ptr<Object> const& _object, string const& _qualifiedPath)
+{
+	if (_qualifiedPath.empty() || _qualifiedPath == _object->name.str())
+		return _object;
+
+	if (!boost::algorithm::starts_with(_qualifiedPath, _object->name.str() + "."))
+		return nullptr;
+
+	string const subObjectPath = _qualifiedPath.substr(_object->name.str().length() + 1);
+	string const subObjectName = subObjectPath.substr(0, subObjectPath.find_first_of('.'));
+
+	auto subObjectIt = ranges::find_if(
+		_object->subObjects,
+		[&subObjectName](auto const& _subObject) { return _subObject->name.str() == subObjectName; }
+	);
+
+	if (subObjectIt == _object->subObjects.end())
+		return nullptr;
+
+	auto subObject = dynamic_pointer_cast<Object>(*subObjectIt);
+	yulAssert(subObject, "Assembly object <" + subObject->name.str() + "> does not contain code.");
+
+	return objectAt(subObject, subObjectPath);
 }

@@ -31,6 +31,7 @@
 
 #include <memory>
 #include <set>
+#include <string>
 #include <limits>
 #include <json/json.h>
 
@@ -128,6 +129,13 @@ public:
 
 	/// @returns the name of the special metadata data object.
 	static std::string metadataName() { return ".metadata"; }
+
+	/// Recursively searches for an Object at @param _qualifiedPath within @param _object.
+	/// @returns a shared_ptr to the Object or a nullptr if it was not found.
+	static std::shared_ptr<Object> objectAt(
+		std::shared_ptr<Object> const& _object,
+		std::string const& _qualifiedPath
+	);
 };
 
 }
