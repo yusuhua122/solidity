@@ -100,7 +100,12 @@ public:
 			auto scanner = make_shared<Scanner>(charStream);
 
 			if (!m_inputIsCodeBlock && scanner->currentToken() == Token::LBrace)
+			{
 				m_inputIsCodeBlock = true;
+
+				if (!_objectPath.empty())
+					throw runtime_error("Object path argument cannot be used. Input is a code block.");
+			}
 
 			shared_ptr<Object> object = parser.parse(scanner, false);
 
@@ -262,8 +267,14 @@ public:
 	{
 		if (!m_inputIsCodeBlock)
 			cout << m_object->toString(&m_dialect) << endl;
-		else
+		else {
+			yulAssert(
+				m_object->subObjects.empty(),
+				"Unexpected subObjects found."
+			);
+
 			cout << AsmPrinter{m_dialect}(*m_object->code) << endl;
+		}
 	}
 
 	void resetNameDispenser()
