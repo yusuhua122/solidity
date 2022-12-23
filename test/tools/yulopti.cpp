@@ -87,7 +87,7 @@ public:
 		}.printErrorInformation(_errors);
 	}
 
-	void parse(string const& _input, string const& _objectPath)
+	void parse(string const& _input)
 	{
 		ErrorList errors;
 		ErrorReporter errorReporter(errors);
@@ -100,26 +100,16 @@ public:
 			auto scanner = make_shared<Scanner>(charStream);
 
 			if (!m_inputIsCodeBlock && scanner->currentToken() == Token::LBrace)
-			{
 				m_inputIsCodeBlock = true;
 
-				if (!_objectPath.empty())
-					solThrow(Exception, "Object path argument cannot be used. Input is a code block.");
-			}
+			m_object = parser.parse(scanner, false);
 
-			shared_ptr<Object> object = parser.parse(scanner, false);
-
-			if (!object || !errorReporter.errors().empty())
+			if (!m_object || !errorReporter.errors().empty())
 			{
 				cerr << "Error parsing source." << endl;
 				printErrors(charStream, errors);
 				solThrow(Exception, "Could not parse source.");
 			}
-
-			m_object = Object::objectAt(object, _objectPath);
-
-			if (m_object == nullptr)
-				solThrow(Exception, "Assembly object not found.");
 
 			runCodeAnalyzer(errorReporter);
 		}
@@ -234,7 +224,11 @@ public:
 	{
 		applyFunctionToObjectAndSubobjects(
 			*m_object,
-			[&](Object& _object) { OptimiserSuite{*m_context}.runSequence(_steps, *_object.code); }
+			[&](Object& _object)
+			{
+				OptimiserStepContext context = createOptimiserStepContext(_object);
+				OptimiserSuite{context}.runSequence(_steps, *_object.code);
+			}
 		);
 	}
 
@@ -242,7 +236,11 @@ public:
 	{
 		applyFunctionToObjectAndSubobjects(
 			*m_object,
-			[&](Object& _object) { VarNameCleaner::run(*m_context, *_object.code); }
+			[&](Object& _object)
+			{
+				OptimiserStepContext context = createOptimiserStepContext(_object);
+				VarNameCleaner::run(context, *_object.code);
+			}
 		);
 	}
 
@@ -254,16 +252,26 @@ public:
 		);
 	}
 
-	void printObject()
+	void printObject(string const& _objectPath)
 	{
 		if (!m_inputIsCodeBlock)
-			cout << m_object->toString(&m_dialect) << endl;
+		{
+			shared_ptr<Object> subObject = Object::objectAt(m_object, _objectPath);
+
+			if (subObject == nullptr)
+				solThrow(Exception, "Assembly object not found.");
+
+			cout << subObject->toString(&m_dialect) << endl;
+		}
 		else
 		{
 			yulAssert(
 				m_object->subObjects.empty(),
 				"Unexpected subObjects found."
 			);
+
+			if (!_objectPath.empty())
+				solThrow(Exception, "Object path argument cannot be used. Input is a code block.");
 
 			cout << AsmPrinter{m_dialect}(*m_object->code) << endl;
 		}
@@ -275,22 +283,25 @@ public:
 			m_dialect,
 			m_reservedIdentifiers
 		);
-
-		m_context = make_shared<OptimiserStepContext>(
-			OptimiserStepContext{
-				m_dialect,
-				*m_nameDispenser,
-				m_reservedIdentifiers,
-				solidity::frontend::OptimiserSettings::standard().expectedExecutionsPerDeployment
-			}
-		);
 	}
 
-	void parseAndRunSteps(string const& _source, string const& _objectPath, string const& _steps)
+	void parseAndRunSteps(string const& _source, string const& _steps)
 	{
-		parse(_source, _objectPath);
+		parse(_source);
 		runCodeDisambiguator();
 		runSequence(_steps);
+	}
+
+	OptimiserStepContext createOptimiserStepContext(Object& _object)
+	{
+		bool isCreation = m_object.get() == &_object || !boost::ends_with(_object.name.str(), "_deployed");
+
+		return OptimiserStepContext{
+			m_dialect,
+			*m_nameDispenser,
+			m_reservedIdentifiers,
+			isCreation ? nullopt : make_optional(OptimiserSettings::standard().expectedExecutionsPerDeployment)
+		};
 	}
 
 	void runInteractive(string _source, string const& _objectPath, bool _disambiguated = false)
@@ -299,7 +310,7 @@ public:
 		ErrorReporter errorReporter(errors);
 		bool disambiguated = _disambiguated;
 
-		parse(_source, _objectPath);
+		parse(_source);
 
 		while (true)
 		{
@@ -346,7 +357,7 @@ public:
 				cerr << boost::current_exception_diagnostic_information() << endl;
 			}
 			cout << "----------------------" << endl;
-			printObject();
+			printObject(_objectPath);
 		}
 	}
 
@@ -359,14 +370,6 @@ private:
 	shared_ptr<NameDispenser> m_nameDispenser = make_shared<NameDispenser>(
 		m_dialect,
 		m_reservedIdentifiers
-	);
-	shared_ptr<OptimiserStepContext> m_context = make_shared<OptimiserStepContext>(
-		OptimiserStepContext{
-			m_dialect,
-			*m_nameDispenser,
-			m_reservedIdentifiers,
-			solidity::frontend::OptimiserSettings::standard().expectedExecutionsPerDeployment
-		}
 	);
 };
 
@@ -400,8 +403,9 @@ int main(int argc, char** argv)
 			(
 				"object",
 				po::value<string>()->value_name("path"),
-				"Dotted path to a specific Yul object in the source. "
-				"If not specified, the top-level object is used. "
+				"Dotted path to a specific Yul object in the source to print after running the steps. "
+				"If not specified, the top-level object will be selected. "
+				"The object will be printed recursively. "
 				"Only valid if the source actually contains objects (rather than a block of Yul code)."
 			)
 			(
@@ -461,8 +465,8 @@ int main(int argc, char** argv)
 
 		if (!nonInteractive)
 		{
-			yulOpti.parse(input, objectPath);
-			yulOpti.printObject();
+			yulOpti.parse(input);
+			yulOpti.printObject(objectPath);
 		}
 
 		if (arguments.count("steps"))
@@ -470,7 +474,7 @@ int main(int argc, char** argv)
 			string sequence = arguments["steps"].as<string>();
 			if (!nonInteractive)
 				cout << "----------------------" << endl;
-			yulOpti.parseAndRunSteps(input, objectPath, sequence);
+			yulOpti.parseAndRunSteps(input, sequence);
 			disambiguated = true;
 		}
 		if (!nonInteractive)
