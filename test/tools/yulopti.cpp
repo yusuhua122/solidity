@@ -104,7 +104,7 @@ public:
 				m_inputIsCodeBlock = true;
 
 				if (!_objectPath.empty())
-					throw runtime_error("Object path argument cannot be used. Input is a code block.");
+					solThrow(Exception, "Object path argument cannot be used. Input is a code block.");
 			}
 
 			shared_ptr<Object> object = parser.parse(scanner, false);
@@ -113,14 +113,13 @@ public:
 			{
 				cerr << "Error parsing source." << endl;
 				printErrors(charStream, errors);
-				throw runtime_error("Could not parse source.");
+				solThrow(Exception, "Could not parse source.");
 			}
 
 			m_object = Object::objectAt(object, _objectPath);
 
-			if (m_object == nullptr) {
-				throw runtime_error("Assembly object not found.");
-			}
+			if (m_object == nullptr)
+				solThrow(Exception, "Assembly object not found.");
 
 			runCodeAnalyzer(errorReporter);
 		}
@@ -183,7 +182,8 @@ public:
 
 	void applyFunctionToObjectAndSubobjects(Object& _object, function<void(Object&)> _function)
 	{
-		for (auto const& subObjectNode: _object.subObjects) {
+		for (auto const& subObjectNode: _object.subObjects)
+		{
 			auto subObject = dynamic_pointer_cast<Object>(subObjectNode);
 
 			if (subObject != nullptr)
@@ -234,10 +234,7 @@ public:
 	{
 		applyFunctionToObjectAndSubobjects(
 			*m_object,
-			[&](Object& _object)
-			{
-				OptimiserSuite{*m_context}.runSequence(_steps, *_object.code);
-			}
+			[&](Object& _object) { OptimiserSuite{*m_context}.runSequence(_steps, *_object.code); }
 		);
 	}
 
@@ -245,10 +242,7 @@ public:
 	{
 		applyFunctionToObjectAndSubobjects(
 			*m_object,
-			[&](Object& _object)
-			{
-				VarNameCleaner::run(*m_context, *_object.code);
-			}
+			[&](Object& _object) { VarNameCleaner::run(*m_context, *_object.code); }
 		);
 	}
 
@@ -256,10 +250,7 @@ public:
 	{
 		applyFunctionToObjectAndSubobjects(
 			*m_object,
-			[&](Object& _object)
-			{
-				StackCompressor::run(m_dialect, _object, true, 16);
-			}
+			[&](Object& _object) { StackCompressor::run(m_dialect, _object, true, 16); }
 		);
 	}
 
@@ -267,7 +258,8 @@ public:
 	{
 		if (!m_inputIsCodeBlock)
 			cout << m_object->toString(&m_dialect) << endl;
-		else {
+		else
+		{
 			yulAssert(
 				m_object->subObjects.empty(),
 				"Unexpected subObjects found."
