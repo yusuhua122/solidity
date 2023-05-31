@@ -7,7 +7,7 @@ Compiler Features:
  * Commandline Interface: Add new input mode ``--import-asm-json`` that can import EVM assembly in the format used by ``--asm-json``.
  * EWasm: Remove EWasm backend.
  * Parser: Introduce ``pragma experimental solidity``, which will enable an experimental language mode that in particular has no stability guarantees between non-breaking releases and is not suited for production use.
-
+ * Standard JSON Interface: Add experimental support for importing EVM Assembly JSON via Standard JSON.
 
 Bugfixes:
  * SMTChecker: Fix encoding of side-effects inside ``if`` and ``ternary conditional``statements in the BMC engine.

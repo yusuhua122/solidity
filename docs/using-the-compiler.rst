@@ -203,7 +203,7 @@ Input Description
 .. code-block:: javascript
 
     {
-      // Required: Source code language. Currently supported are "Solidity", "Yul" and "SolidityAST" (experimental).
+      // Required: Source code language. Currently supported are "Solidity", "Yul", "SolidityAST" (experimental), "EvmAssemblyJSON" (experimental).
       "language": "Solidity",
       // Required
       "sources":
@@ -238,6 +238,11 @@ Input Description
           // produced by the compiler in "stopAfter": "parsing" mode and then re-performs
           // analysis, so any analysis-based annotations of the AST are ignored upon import.
           "ast": { ... } // formatted as the json ast requested with the ``ast`` output selection.
+          // If language is set to "EvmAssemblyJSON", an EVM Assembly JSON object needs to be supplied directly under the key of the source.
+          // The format need to be the same as used by ``--asm-json``. Only one source can be defined.
+          ".code": [ ... ],
+          ".data": { ... }, // optional
+          "sourceList": [ ... ], // optional (if no ``source`` node was defined in any ``.code`` element.)
         },
         "destructible":
         {

@@ -96,6 +96,7 @@ private:
 	std::variant<InputsAndSettings, Json::Value> parseInput(Json::Value const& _input);
 
 	std::map<std::string, Json::Value> parseAstFromInput(StringMap const& _sources);
+	Json::Value importEvmAssembly(InputsAndSettings _inputsAndSettings);
 	Json::Value compileSolidity(InputsAndSettings _inputsAndSettings);
 	Json::Value compileYul(InputsAndSettings _inputsAndSettings);
 

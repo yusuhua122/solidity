@@ -30,6 +30,7 @@
 #include <libyul/optimiser/Suite.h>
 
 #include <libevmasm/Disassemble.h>
+#include <libevmasm/EVMAssemblyStack.h>
 
 #include <libsmtutil/Exceptions.h>
 
@@ -716,6 +717,11 @@ std::variant<StandardCompiler::InputsAndSettings, Json::Value> StandardCompiler:
 		for (auto const& sourceName: sources.getMemberNames())
 			ret.sources[sourceName] = util::jsonCompactPrint(sources[sourceName]);
 	}
+	else if (ret.language == "EvmAssemblyJSON")
+	{
+		for (auto const& sourceName: sources.getMemberNames())
+			ret.sources[sourceName] = util::jsonCompactPrint(sources[sourceName]);
+	}
 
 	Json::Value const& auxInputs = _input["auxiliaryInput"];
 
@@ -1127,6 +1133,91 @@ map<string, Json::Value> StandardCompiler::parseAstFromInput(StringMap const& _s
 		sourceJsons.emplace(sourceName, std::move(ast[astKey]));
 	}
 	return sourceJsons;
+}
+
+Json::Value StandardCompiler::importEvmAssembly(StandardCompiler::InputsAndSettings _inputsAndSettings)
+{
+	solAssert(_inputsAndSettings.language == "EvmAssemblyJSON");
+	solAssert(1 == _inputsAndSettings.sources.size());
+
+	bool const binariesRequested = isBinaryRequested(_inputsAndSettings.outputSelection);
+	bool const wildcardMatchesExperimental = false;
+	Json::Value output = Json::objectValue;
+	if (binariesRequested)
+	{
+		evmasm::EVMAssemblyStack stack(_inputsAndSettings.evmVersion);
+		std::string const& sourceName = _inputsAndSettings.sources.begin()->first; // result of structured binding can only be used within lambda from C++20 on.
+		std::string const& source = _inputsAndSettings.sources.begin()->second;
+		stack.parseAndAnalyze(sourceName, source);
+		stack.assemble();
+		if (stack.compilationSuccessful())
+		{
+			// EVM
+			Json::Value evmData(Json::objectValue);
+			if (isArtifactRequested(_inputsAndSettings.outputSelection, sourceName, "", "evm.assembly", wildcardMatchesExperimental))
+				evmData["assembly"] = stack.assemblyString(sourceName, {{sourceName, source}});
+			if (isArtifactRequested(_inputsAndSettings.outputSelection, sourceName, "", "evm.legacyAssembly", wildcardMatchesExperimental))
+				evmData["legacyAssembly"] = stack.assemblyJSON(sourceName);
+
+			if (isArtifactRequested(
+					_inputsAndSettings.outputSelection,
+					sourceName,
+					"",
+					evmObjectComponents("bytecode"),
+					wildcardMatchesExperimental
+					))
+			{
+				evmData["bytecode"] = collectEVMObject(
+					_inputsAndSettings.evmVersion,
+					stack.object(sourceName),
+					stack.sourceMapping(sourceName),
+					{},
+					false,
+					[&](string const& _element)
+					{
+						return isArtifactRequested(
+							_inputsAndSettings.outputSelection,
+							sourceName,
+							"",
+							"evm.bytecode." + _element,
+							wildcardMatchesExperimental);
+					});
+			}
+
+			if (isArtifactRequested(
+					_inputsAndSettings.outputSelection,
+					sourceName,
+					"",
+					evmObjectComponents("deployedBytecode"),
+					wildcardMatchesExperimental
+					))
+				evmData["deployedBytecode"] = collectEVMObject(
+					_inputsAndSettings.evmVersion,
+					stack.runtimeObject(sourceName),
+					stack.runtimeSourceMapping(sourceName),
+					{},
+					true,
+					[&](string const& _element)
+					{
+						return isArtifactRequested(
+							_inputsAndSettings.outputSelection,
+							sourceName,
+							"",
+							"evm.deployedBytecode." + _element,
+							wildcardMatchesExperimental);
+					});
+
+			Json::Value contractData(Json::objectValue);
+			if (!evmData.empty())
+				contractData["evm"] = evmData;
+
+			Json::Value contractsOutput = Json::objectValue;
+			contractsOutput[sourceName][""] = contractData;
+			if (!contractsOutput.empty())
+				output["contracts"] = contractsOutput;
+		}
+	}
+	return util::removeNullMembers(output);
 }
 
 Json::Value StandardCompiler::compileSolidity(StandardCompiler::InputsAndSettings _inputsAndSettings)
@@ -1577,8 +1668,10 @@ Json::Value StandardCompiler::compile(Json::Value const& _input) noexcept
 			return compileYul(std::move(settings));
 		else if (settings.language == "SolidityAST")
 			return compileSolidity(std::move(settings));
+		else if (settings.language == "EvmAssemblyJSON")
+			return importEvmAssembly(std::move(settings));
 		else
-			return formatFatalError(Error::Type::JSONError, "Only \"Solidity\", \"Yul\" or \"SolidityAST\" is supported as a language.");
+			return formatFatalError(Error::Type::JSONError, "Only \"Solidity\", \"Yul\", \"SolidityAST\" or \"EvmAssemblyJSON\" is supported as a language.");
 	}
 	catch (Json::LogicError const& _exception)
 	{
