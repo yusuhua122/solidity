@@ -460,22 +460,22 @@ struct SimpleCounterForLoopChecker: public PostTypeChecker::Checker
 	}
 	bool isSimpleCounterLoop(ForStatement const& _forStatement) const
 	{
-		auto const* cond = dynamic_cast<BinaryOperation const*>(_forStatement.condition());
-		if (!cond || cond->getOperator() != Token::LessThan || cond->userDefinedFunctionType())
+		auto const* simpleCondition = dynamic_cast<BinaryOperation const*>(_forStatement.condition());
+		if (!simpleCondition || simpleCondition->getOperator() != Token::LessThan || simpleCondition->userDefinedFunctionType())
 			return false;
 		if (!_forStatement.loopExpression())
 			return false;
 
-		auto const* post = dynamic_cast<UnaryOperation const*>(&_forStatement.loopExpression()->expression());
+		auto const* simplePostExpression = dynamic_cast<UnaryOperation const*>(&_forStatement.loopExpression()->expression());
 		// This matches both operators ++i and i++
-		if (!post || post->getOperator() != Token::Inc || post->userDefinedFunctionType())
+		if (!simplePostExpression || simplePostExpression->getOperator() != Token::Inc || simplePostExpression->userDefinedFunctionType())
 			return false;
 
-		auto const* lhsIdentifier = dynamic_cast<Identifier const*>(&cond->leftExpression());
-		auto const* lhsType = dynamic_cast<IntegerType const*>(cond->leftExpression().annotation().type);
-		auto const* commonType = dynamic_cast<IntegerType const*>(cond->annotation().commonType);
+		auto const* lhsIdentifier = dynamic_cast<Identifier const*>(&simpleCondition->leftExpression());
+		auto const* lhsIntegerType = dynamic_cast<IntegerType const*>(simpleCondition->leftExpression().annotation().type);
+		auto const* commonIntegerType = dynamic_cast<IntegerType const*>(simpleCondition->annotation().commonType);
 
-		if (lhsIdentifier && lhsType && commonType && *lhsType == *commonType)
+		if (lhsIdentifier && lhsIntegerType && commonIntegerType && *lhsIntegerType == *commonIntegerType)
 		{
 			LValueChecker lValueChecker{*lhsIdentifier};
 			_forStatement.body().accept(lValueChecker);
