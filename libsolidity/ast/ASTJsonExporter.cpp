@@ -743,7 +743,7 @@ bool ASTJsonExporter::visit(WhileStatement const& _node)
 bool ASTJsonExporter::visit(ForStatement const& _node)
 {
 
-	std::vector<pair<string, Json::Value>> attributes = {
+	vector<pair<string, Json::Value>> attributes = {
 		make_pair("initializationExpression", toJsonOrNull(_node.initializationExpression())),
 		make_pair("condition", toJsonOrNull(_node.condition())),
 		make_pair("loopExpression", toJsonOrNull(_node.loopExpression())),
