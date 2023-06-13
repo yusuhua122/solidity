@@ -475,14 +475,15 @@ struct SimpleCounterForLoopChecker: public PostTypeChecker::Checker
 		auto const* lhsIntegerType = dynamic_cast<IntegerType const*>(simpleCondition->leftExpression().annotation().type);
 		auto const* commonIntegerType = dynamic_cast<IntegerType const*>(simpleCondition->annotation().commonType);
 
-		if (lhsIdentifier && lhsIntegerType && commonIntegerType && *lhsIntegerType == *commonIntegerType)
-		{
-			LValueChecker lValueChecker{*lhsIdentifier};
-			_forStatement.body().accept(lValueChecker);
-			if (!lValueChecker.willBeWrittenTo())
-				return true;
-		}
-		return false;
+		if (!lhsIdentifier || !lhsIntegerType || !commonIntegerType || *lhsIntegerType != *commonIntegerType)
+			return false;
+
+		LValueChecker lValueChecker{*lhsIdentifier};
+		_forStatement.body().accept(lValueChecker);
+		if (lValueChecker.willBeWrittenTo())
+			return false;
+
+		return true;
 	}
 };
 
