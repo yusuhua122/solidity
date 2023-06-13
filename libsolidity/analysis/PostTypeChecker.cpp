@@ -478,9 +478,9 @@ struct SimpleCounterForLoopChecker: public PostTypeChecker::Checker
 		if (!lhsIdentifier || !lhsIntegerType || !commonIntegerType || *lhsIntegerType != *commonIntegerType)
 			return false;
 
-		LValueChecker lValueChecker{*lhsIdentifier};
-		_forStatement.body().accept(lValueChecker);
-		if (lValueChecker.willBeWrittenTo())
+		LValueChecker lhsLValueChecker{*lhsIdentifier};
+		_forStatement.body().accept(lhsLValueChecker);
+		if (lhsLValueChecker.willBeWrittenTo())
 			return false;
 
 		return true;
