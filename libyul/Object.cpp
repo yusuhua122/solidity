@@ -176,15 +176,15 @@ vector<size_t> Object::pathToSubObject(YulString _qualifiedName) const
 	return path;
 }
 
-shared_ptr<Object> Object::objectAt(shared_ptr<Object> const& _object, string const& _qualifiedPath)
+shared_ptr<Object> Object::objectAt(shared_ptr<Object> const& _object, string const& _qualifiedName)
 {
-	if (_qualifiedPath.empty() || _qualifiedPath == _object->name.str())
+	if (_qualifiedName.empty() || _qualifiedName == _object->name.str())
 		return _object;
 
-	if (!boost::algorithm::starts_with(_qualifiedPath, _object->name.str() + "."))
+	if (!boost::algorithm::starts_with(_qualifiedName, _object->name.str() + "."))
 		return nullptr;
 
-	string const subObjectPath = _qualifiedPath.substr(_object->name.str().length() + 1);
+	string const subObjectPath = _qualifiedName.substr(_object->name.str().length() + 1);
 	string const subObjectName = subObjectPath.substr(0, subObjectPath.find_first_of('.'));
 
 	auto subObjectIt = ranges::find_if(
