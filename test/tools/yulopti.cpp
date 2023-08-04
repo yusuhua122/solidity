@@ -98,10 +98,7 @@ public:
 			ObjectParser parser(errorReporter, m_dialect);
 
 			auto scanner = make_shared<Scanner>(charStream);
-
-			if (!m_inputIsCodeBlock && scanner->currentToken() == Token::LBrace)
-				m_inputIsCodeBlock = true;
-
+			m_inputIsCodeBlock = (scanner->currentToken() == Token::LBrace);
 			m_object = parser.parse(scanner, false);
 
 			if (!m_object || !errorReporter.errors().empty())
@@ -349,7 +346,6 @@ public:
 				}
 
 				resetNameDispenser();
-				runCodeAnalyzer(errorReporter);
 			}
 			catch (...)
 			{
@@ -381,7 +377,7 @@ int main(int argc, char** argv)
 		po::options_description options(
 			R"(yulopti, yul optimizer exploration tool.
 	Usage: yulopti [Options] <file>
-	Reads <file> containing a either a yul object or a yul code block and applies optimizer steps to it,
+	Reads <file> containing either a yul object or a yul code block and applies optimizer steps to it,
 	interactively read from stdin.
 	In non-interactive mode a list of steps has to be provided.
 	If <file> is -, yul code is read from stdin and run non-interactively.
