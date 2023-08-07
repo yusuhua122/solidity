@@ -99,6 +99,7 @@ void GasTest::printUpdatedExpectations(std::ostream& _stream, std::string const&
 
 void GasTest::setupCompiler(CompilerStack& _compiler)
 {
+	AnalysisFramework::setupCompiler(_compiler);
 
 	// Prerelease CBOR metadata varies in size due to changing version numbers and build dates.
 	// This leads to volatile creation cost estimates. Therefore we force the compiler to
