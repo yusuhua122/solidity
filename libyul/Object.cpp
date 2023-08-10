@@ -145,8 +145,36 @@ set<YulString> Object::qualifiedDataNames() const
 	return qualifiedNames;
 }
 
+void Object::traverseObjectTree(Object const* _object, YulString _qualifiedName, std::function<bool(Object const*)> _visitor)
+{
+	yulAssert(!_qualifiedName.empty(), "");
+
+	vector<string> subObjectPathComponents;
+	boost::algorithm::split(subObjectPathComponents, _qualifiedName.str(), boost::is_any_of("."));
+
+	for (string const& currentSubObjectName: subObjectPathComponents)
+	{
+		yulAssert(!currentSubObjectName.empty(), "");
+
+		auto subObjectIt = ranges::find_if(
+			_object->subObjects,
+			[&currentSubObjectName](auto const& _subObject) { return _subObject->name.str() == currentSubObjectName; }
+		);
+
+		if (subObjectIt != _object->subObjects.end())
+		{
+			_object = dynamic_cast<Object const*>(subObjectIt->get());
+			yulAssert(_object, "Assembly object <" + _object->name.str() + "> not found or does not contain code.");
+			yulAssert(_object->subId != numeric_limits<size_t>::max(), "");
+			if (_visitor(_object))
+				break;
+		}
+	}
+}
+
 vector<size_t> Object::pathToSubObject(YulString _qualifiedName) const
 {
+	vector<size_t> path;
 	yulAssert(_qualifiedName != name, "");
 	yulAssert(subIndexByName.count(name) == 0, "");
 
@@ -154,49 +182,24 @@ vector<size_t> Object::pathToSubObject(YulString _qualifiedName) const
 		_qualifiedName = YulString{_qualifiedName.str().substr(name.str().length() + 1)};
 	yulAssert(!_qualifiedName.empty(), "");
 
-	vector<string> subObjectPathComponents;
-	boost::algorithm::split(subObjectPathComponents, _qualifiedName.str(), boost::is_any_of("."));
-
-	vector<size_t> path;
-	Object const* object = this;
-	for (string const& currentSubObjectName: subObjectPathComponents)
-	{
-		yulAssert(!currentSubObjectName.empty(), "");
-		auto subIndexIt = object->subIndexByName.find(YulString{currentSubObjectName});
-		yulAssert(
-			subIndexIt != object->subIndexByName.end(),
-			"Assembly object <" + _qualifiedName.str() + "> not found or does not contain code."
-		);
-		object = dynamic_cast<Object const*>(object->subObjects[subIndexIt->second].get());
-		yulAssert(object, "Assembly object <" + _qualifiedName.str() + "> not found or does not contain code.");
-		yulAssert(object->subId != numeric_limits<size_t>::max(), "");
-		path.push_back({object->subId});
-	}
-
+	traverseObjectTree(this, _qualifiedName, [&](Object const* _object) -> bool {
+		path.push_back({_object->subId});
+		return false;
+	});
 	return path;
 }
 
-shared_ptr<Object> Object::objectAt(shared_ptr<Object> const& _object, string const& _qualifiedName)
+std::shared_ptr<Object> Object::objectAt(std::shared_ptr<Object> const& _object, string const& _qualifiedName)
 {
-	if (_qualifiedName.empty() || _qualifiedName == _object->name.str())
-		return _object;
+	std::shared_ptr<Object> object = nullptr;
+	traverseObjectTree(_object.get(), YulString(_qualifiedName), [&](Object const* _obj) -> bool {
+		if (_qualifiedName.empty() || _qualifiedName == _obj->name.str())
+		{
+			object = make_shared<Object>(*_obj);
+			return true;
+		}
+		return false;
+	});
 
-	if (!boost::algorithm::starts_with(_qualifiedName, _object->name.str() + "."))
-		return nullptr;
-
-	string const subObjectPath = _qualifiedName.substr(_object->name.str().length() + 1);
-	string const subObjectName = subObjectPath.substr(0, subObjectPath.find_first_of('.'));
-
-	auto subObjectIt = ranges::find_if(
-		_object->subObjects,
-		[&subObjectName](auto const& _subObject) { return _subObject->name.str() == subObjectName; }
-	);
-
-	if (subObjectIt == _object->subObjects.end())
-		return nullptr;
-
-	auto subObject = dynamic_pointer_cast<Object>(*subObjectIt);
-	yulAssert(subObject, "Assembly object <" + subObject->name.str() + "> does not contain code.");
-
-	return objectAt(subObject, subObjectPath);
+	return object;
 }

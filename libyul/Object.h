@@ -117,6 +117,14 @@ public:
 	/// The path must not lead to a @a Data object (will throw in that case).
 	std::vector<size_t> pathToSubObject(YulString _qualifiedName) const;
 
+	/// Traverses the @a _object tree applying the function @a _visitor at every subobject
+	/// in the path given by the @a _qualifiedName.
+	static void traverseObjectTree(
+		Object const* _object,
+		YulString _qualifiedName,
+		std::function<bool(Object const*)> _visitor
+	);
+
 	/// sub id for object if it is subobject of another object, max value if it is not subobject
 	size_t subId = std::numeric_limits<size_t>::max();
 
@@ -130,7 +138,7 @@ public:
 	/// @returns the name of the special metadata data object.
 	static std::string metadataName() { return ".metadata"; }
 
-	/// Recursively searches for an Object at @param _qualifiedName within @param _object.
+	/// Searches for an Object at @param _qualifiedName within @param _object.
 	/// @returns a shared_ptr to the Object or a nullptr if it was not found.
 	static std::shared_ptr<Object> objectAt(
 		std::shared_ptr<Object> const& _object,
