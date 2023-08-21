@@ -743,15 +743,15 @@ bool ASTJsonExporter::visit(WhileStatement const& _node)
 bool ASTJsonExporter::visit(ForStatement const& _node)
 {
 
-	vector<pair<string, Json::Value>> attributes = {
-		make_pair("initializationExpression", toJsonOrNull(_node.initializationExpression())),
-		make_pair("condition", toJsonOrNull(_node.condition())),
-		make_pair("loopExpression", toJsonOrNull(_node.loopExpression())),
-		make_pair("body", toJson(_node.body()))
+	std::vector<std::pair<std::string, Json::Value>> attributes = {
+		std::make_pair("initializationExpression", toJsonOrNull(_node.initializationExpression())),
+		std::make_pair("condition", toJsonOrNull(_node.condition())),
+		std::make_pair("loopExpression", toJsonOrNull(_node.loopExpression())),
+		std::make_pair("body", toJson(_node.body()))
 	};
 
 	if (_node.annotation().isSimpleCounterLoop.set())
-		attributes.emplace_back(make_pair("isSimpleCounterLoop", *_node.annotation().isSimpleCounterLoop));
+		attributes.emplace_back(std::make_pair("isSimpleCounterLoop", *_node.annotation().isSimpleCounterLoop));
 
 	setJsonNode(_node, "ForStatement", std::move(attributes));
 	return false;

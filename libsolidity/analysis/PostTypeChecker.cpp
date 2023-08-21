@@ -492,11 +492,11 @@ struct SimpleCounterForLoopChecker: public PostTypeChecker::Checker
 
 PostTypeChecker::PostTypeChecker(langutil::ErrorReporter& _errorReporter): m_errorReporter(_errorReporter)
 {
-	m_checkers.push_back(make_shared<ConstStateVarCircularReferenceChecker>(_errorReporter));
-	m_checkers.push_back(make_shared<OverrideSpecifierChecker>(_errorReporter));
-	m_checkers.push_back(make_shared<ModifierContextChecker>(_errorReporter));
-	m_checkers.push_back(make_shared<EventOutsideEmitErrorOutsideRevertChecker>(_errorReporter));
-	m_checkers.push_back(make_shared<NoVariablesInInterfaceChecker>(_errorReporter));
-	m_checkers.push_back(make_shared<ReservedErrorSelector>(_errorReporter));
-	m_checkers.push_back(make_shared<SimpleCounterForLoopChecker>(_errorReporter));
+	m_checkers.push_back(std::make_shared<ConstStateVarCircularReferenceChecker>(_errorReporter));
+	m_checkers.push_back(std::make_shared<OverrideSpecifierChecker>(_errorReporter));
+	m_checkers.push_back(std::make_shared<ModifierContextChecker>(_errorReporter));
+	m_checkers.push_back(std::make_shared<EventOutsideEmitErrorOutsideRevertChecker>(_errorReporter));
+	m_checkers.push_back(std::make_shared<NoVariablesInInterfaceChecker>(_errorReporter));
+	m_checkers.push_back(std::make_shared<ReservedErrorSelector>(_errorReporter));
+	m_checkers.push_back(std::make_shared<SimpleCounterForLoopChecker>(_errorReporter));
 }
