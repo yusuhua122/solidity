@@ -439,8 +439,9 @@ public:
 	bool willBeWrittenTo() const { return m_willBeWrittenTo; }
 	void endVisit(Identifier const& _identifier) override
 	{
+		solAssert(_identifier.annotation().referencedDeclaration, "");
 		if (
-			_identifier.annotation().referencedDeclaration == m_declaration &&
+			*_identifier.annotation().referencedDeclaration == *m_declaration &&
 			_identifier.annotation().willBeWrittenTo
 		)
 			m_willBeWrittenTo = true;
