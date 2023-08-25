@@ -113,6 +113,10 @@ void GasTest::setupCompiler(CompilerStack& _compiler)
 	}
 	settings.expectedExecutionsPerDeployment = m_optimiseRuns;
 	_compiler.setOptimiserSettings(settings);
+
+	// Intentionally ignoring EVM version specified on the command line.
+	// Gas expectations are only valid for the default version.
+	_compiler.setEVMVersion(EVMVersion{});
 }
 
 TestCase::TestResult GasTest::run(std::ostream& _stream, std::string const& _linePrefix, bool _formatted)
