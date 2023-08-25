@@ -253,7 +253,7 @@ public:
 	{
 		if (!m_inputIsCodeBlock)
 		{
-			shared_ptr<Object> subObject = Object::objectAt(m_object, _objectPath);
+			shared_ptr<Object> subObject = Object::objectAt(m_object, YulString(_objectPath));
 
 			if (subObject == nullptr)
 				solThrow(Exception, "Assembly object not found.");

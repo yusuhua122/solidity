@@ -193,11 +193,11 @@ vector<size_t> Object::pathToSubObject(YulString _qualifiedName) const
 	return path;
 }
 
-std::shared_ptr<Object> Object::objectAt(std::shared_ptr<Object> const& _object, string const& _qualifiedName)
+std::shared_ptr<Object> Object::objectAt(std::shared_ptr<Object> const& _object, YulString _qualifiedName)
 {
 	std::shared_ptr<Object> object = nullptr;
-	traverseObjectTree(_object.get(), YulString(_qualifiedName), [&](Object const* _obj) -> bool {
-		if (!_qualifiedName.empty() && _qualifiedName != _obj->name.str())
+	traverseObjectTree(_object.get(), _qualifiedName, [&](Object const* _obj) -> bool {
+		if (!_qualifiedName.empty() && _qualifiedName != _obj->name)
 			return false;
 
 		object = make_shared<Object>(*_obj);

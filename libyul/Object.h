@@ -142,7 +142,7 @@ public:
 	/// @returns a shared_ptr to the Object or a nullptr if it was not found.
 	static std::shared_ptr<Object> objectAt(
 		std::shared_ptr<Object> const& _object,
-		std::string const& _qualifiedName
+		YulString _qualifiedName
 	);
 };
 
