@@ -435,7 +435,9 @@ struct ReservedErrorSelector: public PostTypeChecker::Checker
 class LValueChecker: public ASTConstVisitor
 {
 public:
-	LValueChecker(Identifier const& _identifier): m_declaration(_identifier.annotation().referencedDeclaration) {}
+	LValueChecker(Identifier const& _identifier):
+		m_declaration(_identifier.annotation().referencedDeclaration)
+	{}
 	bool willBeWrittenTo() const { return m_willBeWrittenTo; }
 	void endVisit(Identifier const& _identifier) override
 	{
@@ -447,7 +449,7 @@ public:
 			m_willBeWrittenTo = true;
 	}
 private:
-	Declaration const* m_declaration = nullptr;
+	Declaration const* m_declaration{};
 	bool m_willBeWrittenTo = false;
 };
 
@@ -481,10 +483,7 @@ struct SimpleCounterForLoopChecker: public PostTypeChecker::Checker
 
 		LValueChecker lhsLValueChecker{*lhsIdentifier};
 		_forStatement.body().accept(lhsLValueChecker);
-		if (lhsLValueChecker.willBeWrittenTo())
-			return false;
-
-		return true;
+		return !lhsLValueChecker.willBeWrittenTo();
 	}
 };
 
