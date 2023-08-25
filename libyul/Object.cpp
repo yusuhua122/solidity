@@ -197,12 +197,11 @@ std::shared_ptr<Object> Object::objectAt(std::shared_ptr<Object> const& _object,
 {
 	std::shared_ptr<Object> object = nullptr;
 	traverseObjectTree(_object.get(), YulString(_qualifiedName), [&](Object const* _obj) -> bool {
-		if (_qualifiedName.empty() || _qualifiedName == _obj->name.str())
-		{
-			object = make_shared<Object>(*_obj);
-			return true;
-		}
-		return false;
+		if (!_qualifiedName.empty() && _qualifiedName != _obj->name.str())
+			return false;
+
+		object = make_shared<Object>(*_obj);
+		return true;
 	});
 
 	return object;
