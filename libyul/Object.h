@@ -122,7 +122,7 @@ public:
 	static void traverseObjectTree(
 		Object const* _object,
 		YulString _qualifiedName,
-		std::function<bool(Object const*)> _visitor
+		std::function<bool(Object const*)> const& _visitor
 	);
 
 	/// sub id for object if it is subobject of another object, max value if it is not subobject

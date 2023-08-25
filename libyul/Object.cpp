@@ -145,7 +145,11 @@ set<YulString> Object::qualifiedDataNames() const
 	return qualifiedNames;
 }
 
-void Object::traverseObjectTree(Object const* _object, YulString _qualifiedName, std::function<bool(Object const*)> _visitor)
+void Object::traverseObjectTree(
+	Object const* _object,
+	YulString _qualifiedName,
+	std::function<bool(Object const*)> const& _visitor
+)
 {
 	yulAssert(!_qualifiedName.empty(), "");
 
