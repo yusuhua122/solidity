@@ -187,7 +187,7 @@ vector<size_t> Object::pathToSubObject(YulString _qualifiedName) const
 	yulAssert(!_qualifiedName.empty(), "");
 
 	traverseObjectTree(this, _qualifiedName, [&](Object const* _object) -> bool {
-		path.push_back({_object->subId});
+		path.push_back(_object->subId);
 		return false;
 	});
 	return path;
