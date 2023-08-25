@@ -618,7 +618,7 @@ bool IRGeneratorForStatements::visit(ForStatement const& _forStatement)
 		_forStatement.condition(),
 		_forStatement.initializationExpression(),
 		_forStatement.loopExpression(),
-		false,
+		false, // _isDoWhile
 		*_forStatement.annotation().isSimpleCounterLoop
 	);
 
