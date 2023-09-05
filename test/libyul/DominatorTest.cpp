@@ -90,7 +90,7 @@ protected:
 		{
 			return {_pair.first.name, _pair.second};
 		};
-		return _vertexIndices | ranges::views::transform(convertIndex) | ranges::to<std::map>;
+		return _vertexIndices | ranges::views::transform(convertIndex) | ranges::to<std::map<std::string, size_t>>;
 	}
 };
 
