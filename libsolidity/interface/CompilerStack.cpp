@@ -654,16 +654,13 @@ bool CompilerStack::analyzeLegacy(bool _noErrorsSoFar)
 
 bool CompilerStack::analyzeExperimental()
 {
-	bool noErrors = true;
 	solAssert(!m_experimentalAnalysis);
 	m_experimentalAnalysis = std::make_unique<experimental::Analysis>(m_errorReporter);
 	std::vector<std::shared_ptr<SourceUnit const>> sourceAsts;
 	for (Source const* source: m_sourceOrder)
 		if (source->ast)
 			sourceAsts.emplace_back(source->ast);
-	if (!m_experimentalAnalysis->check(sourceAsts))
-		noErrors = false;
-	return noErrors;
+	return m_experimentalAnalysis->check(sourceAsts);
 }
 
 bool CompilerStack::parseAndAnalyze(State _stopAfter)
