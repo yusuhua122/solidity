@@ -329,12 +329,16 @@ namespace TokenTraits
 		return tok == Token::Assembly || tok == Token::Contract || tok == Token::External || tok == Token::Fallback ||
 			tok == Token::Pragma || tok == Token::Import || tok == Token::As || tok == Token::Function || tok == Token::Let ||
 			tok == Token::Return || tok == Token::Type || tok == Token::Bool || tok == Token::If || tok == Token::Else ||
-			tok == Token::Do || tok == Token::While || tok == Token::For || tok == Token::Continue || tok == Token::Break ||
-			(tok > Token::NonExperimentalEnd && tok < Token::ExperimentalEnd);
+			tok == Token::Do || tok == Token::While || tok == Token::For || tok == Token::Continue || tok == Token::Break;
+			// TODO: see isExperimentalSolidityKeyword below
+			// || (tok > Token::NonExperimentalEnd && tok < Token::ExperimentalEnd);
 	}
-	constexpr bool isExperimentalSolidityOnlyKeyword(Token tok)
+	constexpr bool isExperimentalSolidityOnlyKeyword(Token)
 	{
-		return tok > Token::NonExperimentalEnd && tok < Token::ExperimentalEnd;
+		// TODO: use token > Token::NonExperimentalEnd && token < Token::ExperimentalEnd
+		// as soon as other experimental tokens are added. For now the comparison generates
+		// a warning from clang because it is always false.
+		return false;
 	}
 
 	bool isYulKeyword(std::string const& _literal);

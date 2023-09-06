@@ -475,12 +475,10 @@ bool CompilerStack::analyze()
 
 		resolver.warnHomonymDeclarations();
 
-		{
-			DocStringTagParser docStringTagParser(m_errorReporter);
-			for (Source const* source: m_sourceOrder)
-				if (source->ast && !docStringTagParser.parseDocStrings(*source->ast))
-					noErrors = false;
- 		}
+		DocStringTagParser docStringTagParser(m_errorReporter);
+		for (Source const* source: m_sourceOrder)
+			if (source->ast && !docStringTagParser.parseDocStrings(*source->ast))
+				noErrors = false;
 
 		// Requires DocStringTagParser
 		for (Source const* source: m_sourceOrder)
