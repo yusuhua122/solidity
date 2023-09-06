@@ -268,6 +268,8 @@ namespace solidity::langutil
 	/* Yul-specific tokens, but not keywords. */                       \
 	T(Leave, "leave", 0)                                               \
 	\
+	T(NonExperimentalEnd, nullptr, 0) /* used as non-experimental enum end marker */ \
+	T(ExperimentalEnd, nullptr, 0) /* used as experimental enum end marker */ \
 	/* Illegal token - not able to scan. */                            \
 	T(Illegal, "ILLEGAL", 0)                                           \
 	\
@@ -321,6 +323,18 @@ namespace TokenTraits
 		return tok == Token::Function || tok == Token::Let || tok == Token::If || tok == Token::Switch || tok == Token::Case ||
 			tok == Token::Default || tok == Token::For || tok == Token::Break || tok == Token::Continue || tok == Token::Leave ||
 			tok == Token::TrueLiteral || tok == Token::FalseLiteral || tok == Token::HexStringLiteral || tok == Token::Hex;
+	}
+	constexpr bool isExperimentalSolidityKeyword(Token tok)
+	{
+		return tok == Token::Assembly || tok == Token::Contract || tok == Token::External || tok == Token::Fallback ||
+			tok == Token::Pragma || tok == Token::Import || tok == Token::As || tok == Token::Function || tok == Token::Let ||
+			tok == Token::Return || tok == Token::Type || tok == Token::Bool || tok == Token::If || tok == Token::Else ||
+			tok == Token::Do || tok == Token::While || tok == Token::For || tok == Token::Continue || tok == Token::Break ||
+			(tok > Token::NonExperimentalEnd && tok < Token::ExperimentalEnd);
+	}
+	constexpr bool isExperimentalSolidityOnlyKeyword(Token tok)
+	{
+		return tok > Token::NonExperimentalEnd && tok < Token::ExperimentalEnd;
 	}
 
 	bool isYulKeyword(std::string const& _literal);
