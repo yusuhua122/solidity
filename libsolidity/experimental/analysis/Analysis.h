@@ -36,9 +36,12 @@ namespace solidity::frontend::experimental
 class Analysis
 {
 public:
-	Analysis(langutil::ErrorReporter& _errorReporter): m_errorReporter(_errorReporter)
+	Analysis(langutil::ErrorReporter& _errorReporter):
+		m_errorReporter(_errorReporter)
 	{}
+
 	bool check(std::vector<std::shared_ptr<SourceUnit const>> const& _sourceUnits);
+
 private:
 	langutil::ErrorReporter& m_errorReporter;
 };
