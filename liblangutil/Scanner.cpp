@@ -1037,7 +1037,7 @@ std::tuple<Token, unsigned, unsigned> Scanner::scanIdentifierOrKeyword()
 			return std::make_tuple(Token::Identifier, 0, 0);
 		break;
 	case ScannerKind::ExperimentalSolidity:
-		// Turn Solidity keywords that are not keywords in experimental solidity into identifiers.
+		// Turn legacy Solidity keywords that are not keywords in experimental Solidity into identifiers.
 		if (!TokenTraits::isExperimentalSolidityKeyword(std::get<0>(token)))
 			return std::make_tuple(Token::Identifier, 0, 0);
 		break;
