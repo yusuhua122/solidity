@@ -324,15 +324,32 @@ namespace TokenTraits
 			tok == Token::Default || tok == Token::For || tok == Token::Break || tok == Token::Continue || tok == Token::Leave ||
 			tok == Token::TrueLiteral || tok == Token::FalseLiteral || tok == Token::HexStringLiteral || tok == Token::Hex;
 	}
-	constexpr bool isExperimentalSolidityKeyword(Token tok)
+
+	constexpr bool isExperimentalSolidityKeyword(Token token)
 	{
-		return tok == Token::Assembly || tok == Token::Contract || tok == Token::External || tok == Token::Fallback ||
-			tok == Token::Pragma || tok == Token::Import || tok == Token::As || tok == Token::Function || tok == Token::Let ||
-			tok == Token::Return || tok == Token::Type || tok == Token::If || tok == Token::Else ||
-			tok == Token::Do || tok == Token::While || tok == Token::For || tok == Token::Continue || tok == Token::Break;
+		return
+			token == Token::Assembly ||
+			token == Token::Contract ||
+			token == Token::External ||
+			token == Token::Fallback ||
+			token == Token::Pragma ||
+			token == Token::Import ||
+			token == Token::As ||
+			token == Token::Function ||
+			token == Token::Let ||
+			token == Token::Return ||
+			token == Token::Type ||
+			token == Token::If ||
+			token == Token::Else ||
+			token == Token::Do ||
+			token == Token::While ||
+			token == Token::For ||
+			token == Token::Continue ||
+			token == Token::Break;
 			// TODO: see isExperimentalSolidityKeyword below
-			// || (tok > Token::NonExperimentalEnd && tok < Token::ExperimentalEnd);
+			// || (token > Token::NonExperimentalEnd && token < Token::ExperimentalEnd);
 	}
+
 	constexpr bool isExperimentalSolidityOnlyKeyword(Token)
 	{
 		// TODO: use token > Token::NonExperimentalEnd && token < Token::ExperimentalEnd
